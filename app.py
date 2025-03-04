@@ -4,15 +4,11 @@ from flask_cors import CORS
 import requests
 from bs4 import BeautifulSoup
 import re
-import nltk
-from nltk.sentiment import SentimentIntensityAnalyzer
-
-# Download necessary NLP data
-nltk.download('vader_lexicon')
+from textblob import TextBlob
 
 # Initialize Flask App
 app = Flask(__name__)
-CORS(app)  # Allows API access from different domains
+CORS(app)
 
 # Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///terrorism_data.db'
@@ -28,12 +24,11 @@ class Report(db.Model):
     sentiment = db.Column(db.String(50))
     threat_level = db.Column(db.String(50))
 
-# Initialize Sentiment Analyzer
-sia = SentimentIntensityAnalyzer()
-
 # Function to Analyze Threat Level
 def analyze_threat(content):
-    sentiment_score = sia.polarity_scores(content)['compound']
+    analysis = TextBlob(content)
+    sentiment_score = analysis.sentiment.polarity  # Range: [-1,1]
+
     if sentiment_score < -0.5:
         return "High Threat"
     elif -0.5 <= sentiment_score < 0:
@@ -43,10 +38,7 @@ def analyze_threat(content):
 
 # Web Scraper Function
 def scrape_news(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-    }
-    response = requests.get(url, headers=headers)
+    response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
 
     # Extract title and text content
